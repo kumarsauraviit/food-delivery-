@@ -7,15 +7,103 @@
 </head>
 
 <body>
-    <!-- Point action to your backend verification endpoint -->
-    <form action="http://localhost:5003/api/payment/verify" method="POST">
-        <script src="https://checkout.razorpay.com/v1/checkout.js" data-key="rzp_test_TVDMWFuMhsKwuR" data-amount="500"
-            data-currency="INR" data-order_id="YOUR_BACKEND_GENERATED_ORDER_ID" data-buttontext="Pay with Razorpay"
-            data-name="Acme Corp" data-description="Food Order Payment" data-image="https://example.com/your_logo.jpg"
-            data-prefill.name="Gaurav Kumar" data-prefill.email="gaurav.kumar@example.com" data-theme.color="#F37254">
-            </script>
-        <input type="hidden" name="hidden" value="custom_value" />
-    </form>
+
+    <button id="pay-button">Pay ₹5</button>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+    <script>
+        document.getElementById("pay-button").onclick = async function () {
+            try {
+                const response = await fetch(
+                    "http://localhost:5003/api/payment/createOrder",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            amount: 5
+                        })
+                    }
+                );
+
+                const data = await response.json();
+                console.log("Backend response:", data);
+
+                const order = data && data.data;
+                const key = order && (order.key_id || order.key);
+
+                if (!response.ok || !data.success || !order || !key) {
+                    const message =
+                        (data && (data.message || data.error)) ||
+                        "Razorpay key was missing. Check RAZORPAY_KEY_ID on the payment service.";
+                    alert(message);
+                    return;
+                }
+
+                const options = {
+                    key: key,
+                    amount: order.amount,
+                    currency: order.currency,
+                    order_id: order.razorpay_order_id,
+                    name: "Acme Corp",
+                    description: "Food Order Payment",
+                    prefill: {
+                        name: "Gaurav Kumar",
+                        email: "gaurav.kumar@example.com",
+                        contact: "9999999999"
+                    },
+                    theme: {
+                        color: "#F37254"
+                    },
+                    handler: async function (paymentResponse) {
+                        console.log("Payment response:", paymentResponse);
+
+                        const verifyResponse = await fetch(
+                            "http://localhost:5003/api/payment/verify",
+                            {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify({
+                                    razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                                    razorpay_order_id: paymentResponse.razorpay_order_id,
+                                    razorpay_signature: paymentResponse.razorpay_signature
+                                })
+                            }
+                        );
+
+                        const result = await verifyResponse.json();
+                        console.log("Verification result:", result);
+
+                        if (result.success) {
+                            alert("Payment successful!");
+                        } else {
+                            alert(result.message || "Payment verification failed!");
+                        }
+                    }
+                };
+
+                const razorpay = new Razorpay(options);
+
+                razorpay.on("payment.failed", function (response) {
+                    console.error("Razorpay payment failed:", response.error);
+                    alert(
+                        (response.error && response.error.description) ||
+                        "Payment failed"
+                    );
+                });
+
+                razorpay.open();
+            } catch (error) {
+                console.error(error);
+                alert("Something went wrong");
+            }
+        };
+    </script>
+
 </body>
 
 </html>

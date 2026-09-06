@@ -1,7 +1,7 @@
 // services/payment.service.ts
 
 import razorpay from "../config/razorpay.js";
-
+import { type Order } from "@project/postgres";
 export class PaymentService {
 
     async createRazorpayOrder(
@@ -18,6 +18,11 @@ export class PaymentService {
         const order = await razorpay.orders.create(options);
 
         return order;
+    }
+    async  createOrder(
+        userId:String,
+    ):Promise<Order>{
+
     }
 }
 

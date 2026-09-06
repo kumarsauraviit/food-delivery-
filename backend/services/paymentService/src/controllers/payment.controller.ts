@@ -4,8 +4,9 @@ import type { Request, Response, NextFunction } from "express";
 // src/controllers/payment.controller.ts
 // src/controllers/payment.controller.ts
 import { paymentService } from '../services/payment.js'
+import { razorpayKeyId, razorpayKeySecret } from '../config/razorpay.js'
 
-import { crypto } from 'crypto';
+import crypto from 'crypto';
 export class PaymentController {
     //create payment order
     async createPaymentOrder(
@@ -15,12 +16,19 @@ export class PaymentController {
     ) {
         try {
 
-            const { amount } = req.body;
+            const { amount ,user_id} = req.body;
 
             if (!amount || amount <= 0) {
                 return res.status(400).json({
                     success: false,
                     message: "Invalid amount",
+                });
+            }
+
+            if (!razorpayKeyId) {
+                return res.status(500).json({
+                    success: false,
+                    message: "Razorpay key is not configured on the server",
                 });
             }
 
@@ -36,7 +44,7 @@ export class PaymentController {
                     razorpay_order_id: razorpayOrder.id,
                     amount: razorpayOrder.amount,
                     currency: razorpayOrder.currency,
-                    key_id: process.env.RAZORPAY_KEY_ID,
+                    key_id: razorpayKeyId,
                 },
             });
 
@@ -67,8 +75,8 @@ export class PaymentController {
                     message: "Missing payment details",
                 });
             }
-            const sha = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!);
-            sha.update(razorpay_order_id + `|${razorpay_payment_id}`);
+            const sha = crypto.createHmac('sha256', razorpayKeySecret);
+            sha.update(`${razorpay_order_id}|${razorpay_payment_id}`);
             const digest = sha.digest('hex');
 
 
@@ -78,10 +86,8 @@ export class PaymentController {
                     message: "Transaction is not legit",
                 });
             }
-
-            // Payment is authentic
-            // Update your PostgreSQL order here
-
+            
+            // this is called an Api which will update the in the order service which will all the orde functionality .
             return res.status(200).json({
                 success: true,
                 message: "Payment verified successfully",

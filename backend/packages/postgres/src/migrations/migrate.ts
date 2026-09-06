@@ -1,18 +1,46 @@
-import dotenv from 'dotenv';
-import { closePostgresConnection, getPostgresPool, initializePostgres } from '../connection.js';
+import dotenv from "dotenv";
+import {
+  closePostgresConnection,
+  getPostgresPool,
+  initializePostgres,
+} from "../connection.js";
 
 dotenv.config();
 
 export async function runMigrations() {
-  console.log('🔄 Running database migrations...');
+  console.log("🔄 Running database migrations...");
 
   const query = `
     -- User status enum
     DO $$ BEGIN
-      CREATE TYPE user_status AS ENUM ('ACTIVE', 'SUSPENDED', 'DELETED');
+      CREATE TYPE user_status AS ENUM ('ACTIVE', 'INACTIVE', 'DELETED');
     EXCEPTION
       WHEN duplicate_object THEN null;
     END $$;
+
+    DO $$ BEGIN
+  CREATE TYPE order_status AS ENUM (
+    'PENDING',
+    'CONFIRMED',
+    'PREPARING',
+    'OUT_FOR_DELIVERY',
+    'DELIVERED',
+    'CANCELLED'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE payment_status AS ENUM (
+    'PENDING',
+    'PAID',
+    'FAILED',
+    'REFUNDED'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
     -- Users table
     CREATE TABLE IF NOT EXISTS users (
@@ -56,14 +84,47 @@ export async function runMigrations() {
     -- Indexes for token lookup and user lookup
     CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token_hash ON password_reset_tokens (token_hash);
     CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens (user_id);
+
+
+    CREATE TABLE IF NOT EXISTS orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  cart_id UUID NOT NULL,
+
+  user_id UUID NOT NULL REFERENCES users(id),
+
+  order_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  status order_status NOT NULL DEFAULT 'PENDING',
+
+  total_amount NUMERIC(12, 2) NOT NULL CHECK (total_amount >= 0),
+  
+  razorpay_order_id VARCHAR(255),
+
+  razorpay_payment_id VARCHAR(255),
+
+  payment_status payment_status NOT NULL DEFAULT 'PENDING',
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_orders_user_id
+ON orders(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_razorpay_order_id
+ON orders(razorpay_order_id)
+WHERE razorpay_order_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_razorpay_payment_id
+ON orders(razorpay_payment_id)
+WHERE razorpay_payment_id IS NOT NULL;
   `;
 
   try {
     await getPostgresPool().query(query);
-    console.log('✅ Migrations applied successfully!');
+    console.log("✅ Migrations applied successfully!");
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Migration error';
-    console.error('❌ Migration failed:', msg);
+    const msg = err instanceof Error ? err.message : "Migration error";
+    console.error("❌ Migration failed:", msg);
   } finally {
     await closePostgresConnection();
   }
@@ -71,7 +132,7 @@ export async function runMigrations() {
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
-  throw new Error('DATABASE_URL is not set in the environment variables.');
+  throw new Error("DATABASE_URL is not set in the environment variables.");
 }
 
 initializePostgres(databaseUrl);
