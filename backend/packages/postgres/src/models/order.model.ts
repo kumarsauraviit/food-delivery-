@@ -32,6 +32,4 @@ export interface CreateOrderDTO {
   order_date: Date;
   status: OrderStatus;
   total_amount: number;
-  discount_percentage: number;
-  total_to_pay_after_discount: number;
 }
