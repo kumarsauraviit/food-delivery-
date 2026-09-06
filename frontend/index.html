@@ -13,12 +13,8 @@
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
     <script>
-
         document.getElementById("pay-button").onclick = async function () {
-
             try {
-
-                // 1. Ask your backend to create Razorpay order
                 const response = await fetch(
                     "http://localhost:5003/api/payment/createOrder",
                     {
@@ -32,38 +28,36 @@
                     }
                 );
 
-                console.log(response);
-
-
                 const data = await response.json();
-
                 console.log("Backend response:", data);
+
+                const order = data && data.data;
+                const key = order && (order.key_id || order.key);
+
+                if (!response.ok || !data.success || !order || !key) {
+                    const message =
+                        (data && (data.message || data.error)) ||
+                        "Razorpay key was missing. Check RAZORPAY_KEY_ID on the payment service.";
+                    alert(message);
+                    return;
+                }
+
                 const options = {
-                    key: data.data.key_id,
-
-
-                    amount: data.data.amount,
-
-                    currency: data.data.currency,
-
-                    order_id: data.data.razorpay_order_id,
-
+                    key: key,
+                    amount: order.amount,
+                    currency: order.currency,
+                    order_id: order.razorpay_order_id,
                     name: "Acme Corp",
-
                     description: "Food Order Payment",
-
                     prefill: {
                         name: "Gaurav Kumar",
                         email: "gaurav.kumar@example.com",
                         contact: "9999999999"
                     },
-
                     theme: {
                         color: "#F37254"
                     },
-
                     handler: async function (paymentResponse) {
-
                         console.log("Payment response:", paymentResponse);
 
                         const verifyResponse = await fetch(
@@ -74,43 +68,40 @@
                                     "Content-Type": "application/json"
                                 },
                                 body: JSON.stringify({
-                                    razorpay_payment_id:
-                                        paymentResponse.razorpay_payment_id,
-
-                                    razorpay_order_id:
-                                        paymentResponse.razorpay_order_id,
-
-                                    razorpay_signature:
-                                        paymentResponse.razorpay_signature
+                                    razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                                    razorpay_order_id: paymentResponse.razorpay_order_id,
+                                    razorpay_signature: paymentResponse.razorpay_signature
                                 })
                             }
                         );
 
                         const result = await verifyResponse.json();
-
                         console.log("Verification result:", result);
 
                         if (result.success) {
                             alert("Payment successful!");
                         } else {
-                            alert("Payment verification failed!");
+                            alert(result.message || "Payment verification failed!");
                         }
                     }
                 };
 
                 const razorpay = new Razorpay(options);
 
+                razorpay.on("payment.failed", function (response) {
+                    console.error("Razorpay payment failed:", response.error);
+                    alert(
+                        (response.error && response.error.description) ||
+                        "Payment failed"
+                    );
+                });
+
                 razorpay.open();
-
             } catch (error) {
-
                 console.error(error);
-
                 alert("Something went wrong");
-
             }
         };
-
     </script>
 
 </body>

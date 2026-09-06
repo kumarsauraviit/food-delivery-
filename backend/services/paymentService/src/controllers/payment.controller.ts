@@ -4,6 +4,7 @@ import type { Request, Response, NextFunction } from "express";
 // src/controllers/payment.controller.ts
 // src/controllers/payment.controller.ts
 import { paymentService } from '../services/payment.js'
+import { razorpayKeyId, razorpayKeySecret } from '../config/razorpay.js'
 
 import crypto from 'crypto';
 export class PaymentController {
@@ -24,6 +25,13 @@ export class PaymentController {
                 });
             }
 
+            if (!razorpayKeyId) {
+                return res.status(500).json({
+                    success: false,
+                    message: "Razorpay key is not configured on the server",
+                });
+            }
+
             const razorpayOrder =
                 await paymentService.createRazorpayOrder(
                     amount,
@@ -36,7 +44,7 @@ export class PaymentController {
                     razorpay_order_id: razorpayOrder.id,
                     amount: razorpayOrder.amount,
                     currency: razorpayOrder.currency,
-                    key_id: process.env.RAZORPAY_KEY_ID,
+                    key_id: razorpayKeyId,
                 },
             });
 
@@ -67,8 +75,8 @@ export class PaymentController {
                     message: "Missing payment details",
                 });
             }
-            const sha = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!);
-            sha.update(razorpay_order_id + `|${razorpay_payment_id}`);
+            const sha = crypto.createHmac('sha256', razorpayKeySecret);
+            sha.update(`${razorpay_order_id}|${razorpay_payment_id}`);
             const digest = sha.digest('hex');
 
 

@@ -7,10 +7,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
 dotenv.config();
 
-const key_id = process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_API_KEY;
-const key_secret = process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_API_SECRET;
+const key_id = (process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_API_KEY || '').trim();
+const key_secret = (process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_API_SECRET || '').trim();
 
 if (!key_id || !key_secret) {
   console.error('[Config Error] FATAL: Razorpay Key ID or Key Secret is missing in environment variables.');
