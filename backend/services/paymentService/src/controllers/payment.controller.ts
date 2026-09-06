@@ -5,7 +5,7 @@ import type { Request, Response, NextFunction } from "express";
 // src/controllers/payment.controller.ts
 import { paymentService } from '../services/payment.js'
 
-import { crypto } from 'crypto';
+import crypto from 'crypto';
 export class PaymentController {
     //create payment order
     async createPaymentOrder(
