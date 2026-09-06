@@ -2,13 +2,13 @@
  * Order status enum
  */
 export enum OrderStatus {
-  PENDING = 'PENDING',
-  PROCESSING = 'PROCESSING',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED',
-  FAILED = 'FAILED',
+  PENDING = "PENDING",
+  CONFIRMED = "CONFIRMED",
+  PREPARING = "PREPARING",
+  OUT_FOR_DELIVERY = "OUT_FOR_DELIVERY",
+  DELIVERED = "DELIVERED",
+  CANCELLED = "CANCELLED",
 }
-
 /**
  * Full Order database entity
  */
@@ -19,8 +19,6 @@ export interface Order {
   order_date: Date;
   status: OrderStatus;
   total_amount: number;
-  discount_percentage: number;
-  total_to_pay_after_discount: number;
   created_at: Date;
   updated_at: Date;
 }

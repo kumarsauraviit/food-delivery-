@@ -16,7 +16,7 @@ export class PaymentController {
     ) {
         try {
 
-            const { amount } = req.body;
+            const { amount ,user_id} = req.body;
 
             if (!amount || amount <= 0) {
                 return res.status(400).json({
@@ -86,10 +86,8 @@ export class PaymentController {
                     message: "Transaction is not legit",
                 });
             }
-
-            // Payment is authentic
-            // Update your PostgreSQL order here
-
+            
+            // this is called an Api which will update the in the order service which will all the orde functionality .
             return res.status(200).json({
                 success: true,
                 message: "Payment verified successfully",
